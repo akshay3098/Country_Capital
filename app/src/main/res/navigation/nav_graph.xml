@@ -10,20 +10,7 @@
         android:name="com.example.walmartassignment.CountryFragment"
         android:label="fragment_country"
         tools:layout="@layout/fragment_country" >
-        <action
-            android:id="@+id/action_countryFragment_to_capitalFragment"
-            app:destination="@id/capitalFragment"
-            app:popUpTo="@id/countryFragment"
-            app:popUpToInclusive="false" />
     </fragment>
-    <fragment
-        android:id="@+id/capitalFragment"
-        android:name="com.example.walmartassignment.CapitalFragment"
-        android:label="fragment_capital"
-        tools:layout="@layout/fragment_capital">
-        <action
-            android:id="@+id/action_capitalFragment_to_countryFragment2"
-            app:destination="@id/countryFragment" />
-    </fragment>
+
 
 </navigation>

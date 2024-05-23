@@ -1,25 +1,26 @@
 package com.example.walmartassignment.viewmodel
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.walmartassignment.model.Country
 import com.example.walmartassignment.repository.CountryRepo
+import com.example.walmartassignment.response.ApiResponse
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 
-open class CountryViewModel(val repo : CountryRepo): ViewModel() {
 
-    private val _selectedCountry = MutableLiveData<String>()
-    val selectedCountry: LiveData<String> get() = _selectedCountry
+/*
+* CountryViewModel is responsible for getting the data from CountryRepo
+* */
+class CountryViewModel(val repo: CountryRepo) : ViewModel() {
 
-    private val _capital = MutableLiveData<String>()
-    val capital: LiveData<String> get() = _capital
-
-    private val _countries = repo.getCountries()
-    val countries: Map<String, String> get() = _countries
-
-    fun selectCountry(country: String) {
-        _selectedCountry.value = country
-        _capital.postValue(repo.getCountries()[country])
+    val countries = MutableStateFlow<ApiResponse<Country?>>(ApiResponse.Empty)
+    fun getCountryList() {
+        viewModelScope.launch(Dispatchers.IO) {
+            repo.getCountryList().collect {
+                countries.emit(it)
+            }
+        }
     }
-
-
 }

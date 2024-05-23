@@ -2,75 +2,109 @@ package com.example.walmartassignment
 
 
 import android.os.Bundle
-import androidx.fragment.app.Fragment
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
-import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AlertDialog
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
-import androidx.navigation.fragment.findNavController
+import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.walmartassignment.adapter.CountryAdapter
 import com.example.walmartassignment.databinding.FragmentCountryBinding
+import com.example.walmartassignment.model.Country
+import com.example.walmartassignment.network.NetworkModule
 import com.example.walmartassignment.repository.CountryRepo
+import com.example.walmartassignment.response.ApiResponse
 import com.example.walmartassignment.viewmodel.CountryViewModel
 import com.example.walmartassignment.viewmodel.CountryViewModelFactory
+import kotlinx.coroutines.launch
 
-// TODO: Rename parameter arguments, choose names that match
-// the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = "param1"
-private const val ARG_PARAM2 = "param2"
 
-/**
- * A simple [Fragment] subclass.
- * Use the [CountryFragment.newInstance] factory method to
- * create an instance of this fragment.
- */
+/*
+* CountryFragment responsible to display country list to the user
+* */
 class CountryFragment : Fragment() {
 
+    val TAG = CountryFragment::class.simpleName
+
     private lateinit var binding: FragmentCountryBinding
-    private lateinit var sharedViewModel: CountryViewModel
+    private lateinit var viewModel: CountryViewModel
+    private lateinit var adapter: CountryAdapter
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
         binding = FragmentCountryBinding.inflate(layoutInflater)
-        val repo = CountryRepo()
+        val network = NetworkModule()
+        val retrofit = network.getRetrofit()
+        val api = network.getApiService(retrofit)
+        val repo = CountryRepo(api)
         val factory = CountryViewModelFactory(repo)
-        sharedViewModel = ViewModelProvider(requireActivity(), factory).get(CountryViewModel::class.java)
-
-        val countries = sharedViewModel.countries.keys.toList()
-        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, countries)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        binding.spinnerCountry.adapter = adapter
-
-        binding.spinnerCountry.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
-                val selectedCountry = countries[position]
-                if (selectedCountry != "Select Country") {
-                    sharedViewModel.selectCountry(selectedCountry)
-                    findNavController().navigate(R.id.action_countryFragment_to_capitalFragment)
-                }
-            }
-
-            override fun onNothingSelected(parent: AdapterView<*>) {
-                // Do nothing
-            }
-        }
-
-        val callback = object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                requireActivity().finish()
-            }
-        }
-        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, callback)
-
+        viewModel = ViewModelProvider(requireActivity(), factory)[CountryViewModel::class.java]
+        viewModel.getCountryList()
+        setAdapter()
+        setObserver()
         return binding.root
     }
 
+    /*
+    * this function is responsible to observe data coming from the view model through mutableStateFlow
+    * */
+    private fun setObserver() {
+        lifecycleScope.launch {
+            viewModel.countries.collect { result ->
+                when (result) {
+                    is ApiResponse.Failure -> {
+                        binding.progress.visibility = View.GONE
+                        binding.errorText.visibility = View.VISIBLE
+                        binding.errorText.text = result.data
+                    }
 
+                    is ApiResponse.Success -> {
 
+                        if (result.data?.isNotEmpty() == true) {
+                            binding.progress.visibility = View.GONE
+                            adapter.updateUI(result.data)
 
+                        } else {
+                            showAlertBox()
+                        }
+
+                    }
+
+                    is ApiResponse.Loading -> {
+                        binding.progress.visibility = View.VISIBLE
+                    }
+
+                    else -> {
+                        Log.d(TAG, "Please try this again")
+                    }
+                }
+            }
+        }
+    }
+
+    private fun showAlertBox() {
+        AlertDialog.Builder(requireActivity())
+            .setTitle("No Countries")
+            .setMessage("Please try again later...")
+            .setPositiveButton("Ok") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .create()
+            .show()
+    }
+
+    fun setAdapter() {
+        adapter = CountryAdapter(Country())
+        binding.countryRecView.layoutManager = LinearLayoutManager(requireActivity())
+        binding.countryRecView.adapter = adapter
+    }
 
 
 }
